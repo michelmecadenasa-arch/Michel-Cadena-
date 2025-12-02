@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ecommerce BIOSNACKS - Michel Cadena</title>
+
+<style>
+:root{
+    --morado:#6a0dad;
+    --morado-claro:#9d4edd;
+    --blanco:#ffffff;
+    --gris:#f5f5f5;
+    --negro:#222;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial, sans-serif;
+    background:var(--gris);
+    color:var(--negro);
+    text-align:center;
+}
+
+/******** HEADER ********/
+h1{
+    color:var(--morado);
+    margin-bottom:10px;
+}
+
+.filtros select{
+    padding:8px;
+    border-radius:6px;
+    border:1px solid var(--morado);
+    margin-top:10px;
+}
+
+/******** PRODUCTOS ********/
+#productos{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:16px;
+}
+
+.producto{
+    background:var(--blanco);
+    width:220px;
+    border-radius:10px;
+    padding:12px;
+    border:1px solid #ccc;
+}
+
+.producto img{
+    width:100%;
+    height:150px;
+    object-fit:cover;
+    border-radius:8px;
+}
+
+.producto button{
+    background:var(--morado);
+    padding:8px;
+    color:var(--blanco);
+    width:100%;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    margin-top:8px;
+}
+
+.producto button:hover{
+    background:var(--morado-claro);
+}
+
+/******** CARRITO ********/
+.carrito{
+    margin-top:30px;
+    padding:20px;
+    background:var(--blanco);
+    border-radius:12px;
+    border:1px solid #ccc;
+    max-width:600px;
+    margin-left:auto;
+    margin-right:auto;
+    text-align:left;
+}
+
+#lista-carrito li{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+}
+
+.qty button{
+    background:var(--morado);
+    color:white;
+    border:none;
+    padding:4px 8px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.qty .remove{
+    background:red;
+}
+
+.vaciar, .finalizar{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    color:white;
+}
+
+.vaciar{ background:red; }
+.finalizar{ background:var(--morado); margin-left:6px; }
+
+.pago{
+    margin-top:16px;
+    padding:12px;
+    background:#f4f4f4;
+    border-radius:10px;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🍽️ Ecommerce BIOSNACKS - MICHEL CADENA</h1>
+
+<div class="filtros">
+    <label for="categoria">Filtrar por categoría:</label><br>
+    <select id="categoria">
+        <option value="todos">Todos</option>
+        <option value="snacks">Snacks</option>
+        <option value="frutas">Frutas</option>
+    </select>
+</div>
+
+<div id="productos"></div>
+
+<!-- ============== CARRITO ============== -->
+<div class="carrito">
+    <h2>🧾 Carrito de Compras (<span id="cantidad-carrito">0</span>)</h2>
+
+    <ul id="lista-carrito"></ul>
+
+    <p>Subtotal: <strong id="subtotal-text">$0.00</strong></p>
+    <p>Impuestos: <strong id="impuestos-text">$0.00</strong></p>
+    <p>Total: <strong id="total-text">$0.00</strong></p>
+
+    <button class="vaciar" id="btn-vaciar">🧼 Vaciar Carrito</button>
+    <button class="finalizar" id="btn-finalizar">✅ Finalizar Compra</button>
+
+    <div class="pago">
+        <h3>💳 Pago</h3>
+        <div id="paypal-button-container" style="display:none"></div>
+    </div>
+</div>
+
+<!-- SDK PAYPAL SANDBOX -->
+<script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+
+<script>
+// =========================================
+// CONFIGURACIONES
+// =========================================
+const MONEDA = "USD";
+const LOCALE = "es-US";
+const TAX_RATE = 0.10;
+const money = new Intl.NumberFormat(LOCALE, {style:"currency", currency:MONEDA});
+
+// =========================================
+// DATASET BIOSNACKS (IMÁGENES ORIGINALES)
+// =========================================
+const productos = [
+  { id:1, nombre:"Biosnacks", precio:25, categoria:"snacks",
+    img:"https://i.ibb.co/NdbmfzWt/IMG-20250826-WA0017.jpg"
+  },
+  { id:2, nombre:"Barras de cereal", precio:18, categoria:"snacks",
+    img:"https://phantom-elmundo.unidadeditorial.es/bb413a9eb032b02856747d61c73fafa4/resize/414/f/jpg/assets/multimedia/imagenes/2019/07/03/15621550645577.jpg"
+  },
+  { id:3, nombre:"Fruta Deshidratada", precio:30, categoria:"frutas",
+    img:"https://images.ecestaticos.com/VahaWc4uGYQGfs8BcxxivNLcg8A=/228x71:2019x1413/1200x900/filters:fill(white):format(jpg)/f.elconfidencial.com%2Foriginal%2Ffda%2Fef3%2F908%2Ffdaef39083f74550604017b67fa3c073.jpg"
+  },
+  { id:4, nombre:"Bowls de frutas", precio:18, categoria:"frutas",
+    img:"https://d36fw6y2wq3bat.cloudfront.net/recipes/bowl-de-granola-con-frutas/900/bowl-de-granola-con-frutas_version_1652914526.jpg"
+  },
+  { id:5, nombre:"Granola", precio:22, categoria:"snacks",
+    img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQyVk8D0eBGi_xXOwqQmLDrb_dhVpJUX3EGLBbHC-RXYJd1EA40G1MmS6G4I2u0Bn-fdkM&usqp=CAU"
+  }
+];
+
+// =========================================
+// CARRITO MAP()
+// =========================================
+let carrito = new Map();
+
+// Selectores
+const lista = document.getElementById("lista-carrito");
+const contProds = document.getElementById("productos");
+const cantidadCarrito = document.getElementById("cantidad-carrito");
+const subtotalText = document.getElementById("subtotal-text");
+const impuestosText = document.getElementById("impuestos-text");
+const totalText = document.getElementById("total-text");
+const selectFiltro = document.getElementById("categoria");
+
+// =========================================
+// RENDER PRODUCTOS
+// =========================================
+function renderProductos(lista){
+    contProds.innerHTML = "";
+    lista.forEach(prod=>{
+        const div = document.createElement("div");
+        div.className = "producto";
+        div.innerHTML = `
+            <img src="${prod.img}">
+            <h3>${prod.nombre}</h3>
+            <p><strong>${money.format(prod.precio)}</strong></p>
+            <button data-add="${prod.id}">Agregar al carrito</button>
+        `;
+        contProds.appendChild(div);
+    });
+}
+
+// =========================================
+// FILTRO
+// =========================================
+function filtrar(){
+    let cat = selectFiltro.value;
+    let data = cat === "todos" ? productos : productos.filter(p=>p.categoria === cat);
+    renderProductos(data);
+}
+selectFiltro.addEventListener("change", filtrar);
+
+// =========================================
+// CARRITO FUNCIONES
+// =========================================
+function add(id){
+    let p = productos.find(x=>x.id===id);
+    if(!p) return;
+    let item = carrito.get(id);
+    if(item){ item.cantidad++; }
+    else{ carrito.set(id, {...p, cantidad:1}); }
+    persist();
+    pintarCarrito();
+}
+
+function dec(id){
+    let item = carrito.get(id);
+    if(!item) return;
+    item.cantidad--;
+    if(item.cantidad<=0) carrito.delete(id);
+    persist();
+    pintarCarrito();
+}
+
+function del(id){
+    carrito.delete(id);
+    persist();
+    pintarCarrito();
+}
+
+function totales(){
+    let subtotal = [...carrito.values()].reduce((a,i)=>a + i.precio * i.cantidad, 0);
+    let impuestos = subtotal * TAX_RATE;
+    let total = subtotal + impuestos;
+    let cantidad = [...carrito.values()].reduce((a,i)=>a + i.cantidad, 0);
+    return {subtotal, impuestos, total, cantidad};
+}
+
+function pintarCarrito(){
+    lista.innerHTML = "";
+    carrito.forEach(item=>{
+        let li = document.createElement("li");
+        li.innerHTML = `
+            ${item.nombre} — ${money.format(item.precio)} x ${item.cantidad}
+            <div class="qty">
+                <button data-dec="${item.id}">−</button>
+                <button data-inc="${item.id}">+</button>
+                <button class="remove" data-del="${item.id}">X</button>
+            </div>
+        `;
+        lista.appendChild(li);
+    });
+
+    let t = totales();
+    subtotalText.textContent = money.format(t.subtotal);
+    impuestosText.textContent = money.format(t.impuestos);
+    totalText.textContent = money.format(t.total);
+    cantidadCarrito.textContent = t.cantidad;
+
+    document.getElementById("paypal-button-container").style.display =
+        t.total > 0 ? "block" : "none";
+
+    renderPayPal(t.total);
+}
+
+// =========================================
+// LOCALSTORAGE
+// =========================================
+function persist(){
+    localStorage.setItem("carrito", JSON.stringify([...carrito.entries()]));
+}
+
+function cargar(){
+    let data = localStorage.getItem("carrito");
+    if(data){
+        carrito = new Map(JSON.parse(data));
+    }
+}
+
+// =========================================
+// PAYPAL
+// =========================================
+let lastTotal = null;
+function renderPayPal(total){
+    if(total <= 0){ 
+        lastTotal = null; 
+        document.getElementById("paypal-button-container").innerHTML = "";
+        return;
+    }
+    if(total === lastTotal) return;
+    lastTotal = total;
+
+    document.getElementById("paypal-button-container").innerHTML = "";
+
+    paypal.Buttons({
+        createOrder:(data,actions)=>{
+            return actions.order.create({
+                purchase_units:[
+                    { amount:{ value: total.toFixed(2) } }
+                ]
+            });
+        },
+        onApprove:(data,actions)=>{
+            return actions.order.capture().then(()=>{
+                alert("¡Gracias por tu compra!");
+                carrito.clear();
+                persist();
+                pintarCarrito();
+            });
+        }
+    }).render("#paypal-button-container");
+}
+
+// =========================================
+// EVENTOS (delegados)
+// =========================================
+document.addEventListener("click", e=>{
+    if(e.target.dataset.add) add(+e.target.dataset.add);
+    if(e.target.dataset.inc) add(+e.target.dataset.inc);
+    if(e.target.dataset.dec) dec(+e.target.dataset.dec);
+    if(e.target.dataset.del) del(+e.target.dataset.del);
+});
+
+document.getElementById("btn-vaciar").addEventListener("click",()=>{
+    if(confirm("¿Vaciar carrito?")){
+        carrito.clear();
+        persist();
+        pintarCarrito();
+    }
+});
+
+document.getElementById("btn-finalizar").addEventListener("click",()=>{
+    if(carrito.size===0) return alert("Carrito vacío.");
+    alert("Pedido confirmado (simulado).");
+    carrito.clear();
+    persist();
+    pintarCarrito();
+});
+
+// =========================================
+// INIT
+// =========================================
+cargar();
+filtrar();
+pintarCarrito();
+</script>
+
+</body>
+</html>
